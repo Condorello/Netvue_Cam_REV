@@ -1,0 +1,32 @@
+#!/bin/sh
+mount -a
+echo /sbin/mdev > /proc/sys/kernel/hotplug
+
+for i in /etc/init.d/S??* ;do
+     # Ignore dangling symlinks (if any).
+     [ ! -f "$i" ] && continue
+
+     case "$i" in
+        *.sh)
+            # Source shell script for speed.
+            (
+                trap - INT QUIT TSTP
+                set start
+                . $i
+            )
+            ;;
+        *)
+            # No sh extension, so fork subprocess.
+            $i start
+            ;;
+    esac
+done
+
+#start telnetd
+mkdir /dev/pts
+mount -t devpts devpts /dev/pts
+
+/mnt/mtd/boot.sh &
+
+/usr/sbin/telnetd &
+(sleep 30 && [ -d /mnt/TF ] && tcpsvd -E 0.0.0.0 21 ftpd -w /mnt/TF) &
